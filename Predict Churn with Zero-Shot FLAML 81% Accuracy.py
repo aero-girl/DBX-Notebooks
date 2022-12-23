@@ -22,16 +22,21 @@
 
 # MAGIC %md
 # MAGIC ## 📚 Libraries
-# MAGIC 
-# MAGIC Import the necessary libraries 
 
 # COMMAND ----------
 
-# Install bamboolib 
-%pip install bamboolib  
+# MAGIC %md
+# MAGIC Install libraries
 
-# FLAML
-%pip install flaml
+# COMMAND ----------
+
+# Install FLAML and bamboolib  
+%pip install flaml bamboolib
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC Import the necessary libraries 
 
 # COMMAND ----------
 
@@ -47,19 +52,13 @@ import matplotlib.pyplot as plt
 # Library for working with large, multi-dimensional arrays and matrices of numerical data
 import numpy as np
 
-# Mlflow
-import mlflow
-import mlflow.sklearn
-
 # FLAML
-# %pip install flaml
 import flaml
 from flaml import AutoML
 from flaml.ml import sklearn_metric_loss_score
 from flaml.data import get_output_from_log
 
-# Install bamboolib 
-# %pip install bamboolib  
+# Bamboolib 
 import bamboolib as bam
 
 # COMMAND ----------
@@ -224,49 +223,44 @@ print('X_test.shape',X_test.shape)
 
 # COMMAND ----------
 
+# from flaml.default import LGBMClassifier
+# estimator = LGBMClassifier()
+# hyperparams, estimator_name, X_transformed, y_transformed = estimator.suggest_hyperparams(X_train, y_train)
+# print(hyperparams)
+# estimator.fit(X_train, y_train)
+# estimator.predict(X_test)
+
+# COMMAND ----------
+
+# from flaml.default import LGBMClassifier
+
+# estimator = LGBMClassifier()
+# hyperparams, _, _, _ = estimator.suggest_hyperparams(X_train, y_train)
+# print(hyperparams)
+# print(estimator)
+
+# estimator.fit(X_train, y_train)
+
+# COMMAND ----------
+
+
+
+# COMMAND ----------
+
+# Predict on testing dataset
+y_pred = estimator.predict(X_test)
+
+
+# COMMAND ----------
+
 automl = AutoML()
-
-# Then, we train the model on the training data and evaluate it on the testing data.
-automl_settings = {
-    "time_budget": 60,  # total running time in seconds
-    "metric": "accuracy",  # metric to optimize
-    "task": "classification",  # task type
-    "log_file_name": "churn_pipeline.log",  # flaml log file
-    }
-
-# COMMAND ----------
-
-# Enable autolog()
-mlflow.sklearn.autolog()
-
-# With autolog() enabled, all model parameters, a model score, and the fitted model are automatically logged.  
-with mlflow.start_run():
-    
-    # The main flaml automl API
-    automl.fit(X_train, y_train, **automl_settings)
-   
-    # Log model
-    mlflow.sklearn.log_model(automl, 'automl')
-    
-    # Log model accuracy 
-    mlflow.log_metric('accuracy', (1-automl.best_loss))
-
-    # Log automl_settings
-    mlflow.log_params(automl_settings)
-
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## 👩🏽‍💻 Retrieve and analyze the outcomes of AutoML.fit() 
-
-# COMMAND ----------
-
-# Retrieve best config
-print('Best estimator:', automl.model.estimator)
-print('Best hyperparmeter config:', automl.best_config)
-print('Training duration of best run: {0:.4g} s'.format(automl.best_config_train_time))
-print('Best accuracy on validation data: {0:.4g}'.format(1-automl.best_loss))
+settings = {
+    "task": "classification",
+    "starting_points": "data",
+    "estimator_list": ["lgbm"],
+    "time_budget": 60,
+}
+automl.fit(X_train, y_train, **settings)
 
 # COMMAND ----------
 
@@ -283,7 +277,6 @@ y_pred = automl.predict(X_test)
 # Compute metric values on test dataset
 print('accuracy', '=', 1 - sklearn_metric_loss_score('accuracy', y_pred, y_test))
 print('roc_auc', '=', sklearn_metric_loss_score('roc_auc', y_pred, y_test))
-
 
 # COMMAND ----------
 
