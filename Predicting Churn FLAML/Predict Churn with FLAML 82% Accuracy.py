@@ -8,6 +8,11 @@
 # COMMAND ----------
 
 # MAGIC %md
+# MAGIC ## Test
+
+# COMMAND ----------
+
+# MAGIC %md
 # MAGIC ##  🚶🏽‍♀️ A walkthrough: Here's an example of how easy FLAML could be used to build a churn prediction model
 
 # COMMAND ----------
