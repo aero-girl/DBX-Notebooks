@@ -34,7 +34,7 @@ from databricks import feature_store
 # COMMAND ----------
 
 #Alter this path to point to the location of where you have uploaded your train.csv
-dbfs_path = 'dbfs:/FileStore/tables/train.csv'
+dbfs_path = 'dbfs:/FileStore/train.csv'
 df_train = spark.read.csv(dbfs_path, header = "True", inferSchema="True")
 
 # COMMAND ----------
@@ -81,9 +81,9 @@ df_train = (df_train
 
 # COMMAND ----------
 
-# # filling the null values in cabin with "N".
-# # df.fillna(value, subset=[]);
-# df = df.na.fill('N', subset=['Cabin'])
+# filling the null values in cabin with "N".
+# df.fillna(value, subset=[]);
+df = df_train.na.fill('N', subset=['Cabin'])
 
 # COMMAND ----------
 
@@ -143,7 +143,7 @@ df = df.withColumn("Family_Size", col('SiblingsSpouses') + col('ParentsChildren'
 # COMMAND ----------
 
 # Let's organise the newly created features in a dataframe
-titanic_feature = df.select("Name","Cabin","Title","Has_Cabin","Family_Size")
+titanic_feature = df.select("PassengerId","Name","Cabin","Title","Has_Cabin","Family_Size")
 
 # COMMAND ----------
 
@@ -168,7 +168,7 @@ titanic_feature = df.select("Name","Cabin","Title","Has_Cabin","Family_Size")
 fs = feature_store.FeatureStoreClient()
 
 fs.create_table(
-    name="feature_store_titanic.titanic_passengers_features_2",
+    name="feature_store_titanic.titanic_passengers_features",
     primary_keys = ["Name","Cabin"],
     df = titanic_feature,
     description = "Titanic Passenger Features")
@@ -180,7 +180,7 @@ fs.create_table(
 # 'overwrite' - updates whole table.
 
 fs.write_table(
-  name = "feature_store_titanic.titanic_passengers_features_2",
+  name = "feature_store_titanic.titanic_passengers_features",
   df = titanic_feature,
   mode = "merge")
 
@@ -191,7 +191,7 @@ fs.write_table(
 
 # COMMAND ----------
 
-ft = fs.get_table("feature_store_titanic.titanic_passengers_features_2")
+ft = fs.get_table("feature_store_titanic.titanic_passengers_features")
 print (ft.keys)
 print (ft.description)
 
@@ -202,57 +202,13 @@ print (ft.description)
 
 # COMMAND ----------
 
-df = fs.read_table("feature_store_titanic.titanic_passengers_features_2")
+df = fs.read_table("feature_store_titanic.titanic_passengers_features")
 display(df)
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC You can now discover the feature tables in the <a href="#feature-store/" target="_blank">Feature Store UI</a>.
-
-# COMMAND ----------
-
-# MAGIC %md 
-# MAGIC # 6. ML model
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## Create training dataset
-
-# COMMAND ----------
-
-from databricks.feature_store import FeatureLookup
-
-titanic_features_table = "feature_store_titanic.titanic_passengers_features_2"
-
-# We choose to only use 2 of the newly created features
-titanic_features_lookups = [
-    FeatureLookup( 
-      table_name = titanic_features_table,
-      feature_names = "Title",
-      lookup_key = ["Name"],
-    ),
-    FeatureLookup( 
-      table_name = titanic_features_table,
-      feature_names = "Has_Cabin",
-      lookup_key = ["Name","Cabin"],
-    ),
-#     FeatureLookup( 
-#       table_name = titanic_features_table,
-#       feature_names = "Family_Size",
-#       lookup_key = ["Name"],
-#     ),
-]
-
-# Create the training set that includes the raw input data merged with corresponding features from both feature tables
-exclude_columns = ["Name", "PassengerId","ParentsChildren","SiblingsSpouses","Ticket"]
-training_set = fs.create_training_set(
-                df_train,
-                feature_lookups = titanic_features_lookups,
-                label = 'Survived',
-                exclude_columns = exclude_columns
-                )
 
 # COMMAND ----------
 
@@ -309,18 +265,3 @@ lgb_pred = lgbm_clf.predict(X_test)
 accuracy=accuracy_score(lgb_pred, y_test)
 print('LightGBM Model accuracy score: {0:0.4f}'.format(accuracy_score(y_test, lgb_pred)))
 mlflow.log_metric('accuracy', accuracy)
-
-# COMMAND ----------
-
-# Log the trained model with MLflow and package it with feature lookup information. 
-fs.log_model(
-  lgbm_clf,
-  artifact_path = "model_packaged",
-  flavor = mlflow.sklearn,
-  training_set = training_set,
-  registered_model_name = "titanic_packaged"
-)
-
-# COMMAND ----------
-
-
